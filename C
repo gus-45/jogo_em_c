@@ -1,0 +1,310 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <string.h>
+
+#ifdef _WIN32
+    #define CLEAR_COMMAND "cls"
+#else
+    #define CLEAR_COMMAND "clear"
+#endif
+
+class Item {
+public:
+    char nome[20];
+    int efeito_vida;
+    int efeito_ouro;
+    int efeito_materiais;
+
+    Item(const char* n = "", int ev = 0, int eo = 0, int em = 0) 
+        : efeito_vida(ev), efeito_ouro(eo), efeito_materiais(em) {
+        snprintf(nome, sizeof(nome), "%s", n);
+    }
+};
+
+class Sala {
+public:
+    int geradores_recursos;
+    int monstros;
+    int baus;
+    int npcs;
+    bool armadilhas;
+    bool sala_especial;
+    bool sala_perda_instantanea;
+
+    Sala() {
+        geradores_recursos = rand() % 4; 
+        monstros = rand() % 3; 
+        baus = rand() % 3; 
+        npcs = rand() % 2; 
+        armadilhas = rand() % 2; 
+        sala_especial = (rand() % 10) == 0; 
+        sala_perda_instantanea = (rand() % 20) == 0; 
+    }
+};
+
+class Jogador {
+public:
+    int vida;
+    int materiais;
+    int ouro;
+    int salas_exploradas;
+    Item inventario[10];
+    char missoes[10][30];
+
+    Jogador() {
+        vida = 100;
+        materiais = 0;
+        ouro = 0;
+        salas_exploradas = 0;
+        for (int i = 0; i < 10; ++i) {
+            inventario[i] = Item();
+            memset(missoes[i], 0, sizeof(missoes[i])); 
+        }
+    }
+
+    void adicionarItem(Item item) {
+        for (int i = 0; i < 10; ++i) {
+            if (strlen(inventario[i].nome) == 0) {
+                inventario[i] = item;
+                break;
+            }
+        }
+    }
+
+    void adicionarMissao(const char* missao) {
+        for (int i = 0; i < 10; ++i) {
+            if (strlen(missoes[i]) == 0) {
+                snprintf(missoes[i], sizeof(missoes[i]), "%s", missao);
+                break;
+            }
+        }
+    }
+
+    void usarItem(int indice) {
+        if (indice < 0 || indice >= 10 || strlen(inventario[indice].nome) == 0) {
+            printf("Indice de item invalido!\n");
+            return;
+        }
+        Item item = inventario[indice];
+        vida += item.efeito_vida;
+        ouro += item.efeito_ouro;
+        materiais += item.efeito_materiais;
+        inventario[indice] = Item(); 
+        printf("Voce usou %s.\n", item.nome);
+    }
+};
+
+void mostrarStatus(Jogador& jogador) {
+    printf("=========================================\n");
+    printf("               Status do Jogador               \n");
+    printf("=========================================\n");
+    printf("Vida: %d\n", jogador.vida);
+    printf("Materiais: %d\n", jogador.materiais);
+    printf("Ouro: %d\n", jogador.ouro);
+    printf("Inventario: ");
+    for (int i = 0; i < 10; ++i) {
+        if (strlen(jogador.inventario[i].nome) > 0) {
+            printf("%s ", jogador.inventario[i].nome);
+        }
+    }
+    printf("\nMissoes: ");
+    for (int i = 0; i < 10; ++i) {
+        if (strlen(jogador.missoes[i]) > 0) {
+            printf("%s ", jogador.missoes[i]);
+        }
+    }
+    printf("\n=========================================\n");
+}
+
+void mostrarSala(Sala& sala) {
+    printf("=========================================\n");
+    printf("               Informacoes da Sala              \n");
+    printf("=========================================\n");
+    printf("Geradores de Recursos: %d\n", sala.geradores_recursos);
+    printf("Monstros: %d\n", sala.monstros);
+    printf("Baus: %d\n", sala.baus);
+    printf("NPCs: %d\n", sala.npcs);
+    printf("Armadilhas: %s\n", sala.armadilhas ? "Sim" : "Nao");
+    printf("Sala Especial: %s\n", sala.sala_especial ? "Sim" : "Nao");
+    printf("Sala de Perda Instantanea: %s\n", sala.sala_perda_instantanea ? "Sim" : "Nao");
+    printf("=========================================\n");
+}
+
+void eventoNPC(Jogador& jogador) {
+    int evento = rand() % 3;
+    if (evento == 0) {
+        printf("O NPC cura voce! Ganha 20 de vida.\n");
+        jogador.vida += 20;
+    } else if (evento == 1) {
+        printf("O NPC lhe da uma missao: Coletar 5 materiais.\n");
+        jogador.adicionarMissao("Coletar 5 materiais");
+    } else {
+        printf("O NPC lhe da um item: Pocao de Vida.\n");
+        jogador.adicionarItem(Item("Pocao de Vida", 20, 0, 0));
+    }
+}
+
+void eventoSalaEspecial(Jogador& jogador) {
+    printf("Voce encontrou uma sala especial! Ganha 50 de ouro.\n");
+    jogador.ouro += 50;
+}
+
+void acessarInventario(Jogador& jogador) {
+    printf("=========================================\n");
+    printf("                Inventario               \n");
+    printf("=========================================\n");
+    for (int i = 0; i < 10; ++i) {
+        if (strlen(jogador.inventario[i].nome) > 0) {
+            printf("%d. %s\n", i + 1, jogador.inventario[i].nome);
+        }
+    }
+    printf("=========================================\n");
+    printf("Escolha um item para usar (0 para cancelar): ");
+    int escolha;
+    scanf("%d", &escolha);
+    if (escolha > 0 && escolha <= 10) {
+        jogador.usarItem(escolha - 1);
+    } else {
+        printf("Cancelado.\n");
+    }
+    while (getchar() != '\n'); 
+}
+
+void mostrarExplicacao() {
+    printf("=======================================================================\n");
+    printf("===== BEM-VINDO AO JOGO ROOM ADVENTURES: DISCOVER THE UNKNOWN =====\n");
+    printf("=======================================================================\n");
+    printf("Objetivo: Explore o maior numero de salas possivel sem morrer.\n");
+    printf("Comandos:\n");
+    printf("1. Extrair recursos: Coleta materiais da sala.\n");
+    printf("2. Abrir bau: Pode encontrar itens valiosos.\n");
+    printf("3. Matar monstros: Derrote monstros para limpar a sala.\n");
+    printf("4. Conversar com NPC: Interaja com NPCs para obter ajuda.\n");
+    printf("5. Entrar na porta para a proxima sala: Avance no jogo.\n");
+    printf("6. Acessar inventario: Use itens do seu inventario.\n");
+    printf("7. Mostrar status: Exibe as informacoes do jogador.\n");
+    printf("8. Mostrar sala: Exibe as informacoes da sala.\n");
+    printf("Elementos do Jogo:\n");
+    printf("- Geradores de Recursos: Podem fornecer materiais.\n");
+    printf("- Monstros: Inimigos que devem ser derrotados.\n");
+    printf("- Baus: Contem itens que podem ser uteis.\n");
+    printf("- NPCs: Personagens que podem ajudar.\n");
+    printf("- Armadilhas: Cuidado, podem causar dano.\n");
+    printf("- Sala Especial: Pode conter grandes recompensas.\n");
+    printf("- Sala de Perda Instantanea: Encerra o jogo imediatamente.\n");
+    printf("=========================================\n");
+}
+
+void mostrarMenuInicial() {
+    printf("==================================================\n");
+    printf("===== ROOM ADVENTURES: DISCOVER THE UNKNOWN =====\n");
+    printf("==================================================\n");
+    printf("1. Iniciar jogo\n");
+    printf("2. Mostrar explicacao\n");
+    printf("Escolha uma opcao: ");
+}
+
+void jogar() {
+    Jogador jogador;
+    srand(time(0));
+
+    while (jogador.vida > 0) {
+        Sala sala;
+        jogador.salas_exploradas++;
+
+        printf("=========================================\n");
+        printf("               Sala %d\n", jogador.salas_exploradas);
+        printf("=========================================\n");
+
+        if (sala.armadilhas) {
+            printf("Voce caiu em uma armadilha! Perdeu 20 de vida.\n");
+            jogador.vida -= 20;
+            if (jogador.vida <= 0) break;
+        }
+
+        if (sala.sala_perda_instantanea) {
+            printf("Voce entrou em uma sala de perda instantanea! Jogo terminado.\n");
+            jogador.vida = 0;
+            break;
+        }
+
+        if (sala.sala_especial) {
+            eventoSalaEspecial(jogador);
+        }
+
+        while (true) {
+            printf("=========================================\n");
+            printf("Escolha uma acao:\n");
+            printf("1. Extrair recursos\n");
+            printf("2. Abrir bau\n");
+            printf("3. Matar monstros\n");
+            printf("4. Conversar com NPC\n");
+            printf("5. Entrar na porta para a proxima sala\n");
+            printf("6. Acessar inventario\n");
+            printf("7. Mostrar status\n");
+            printf("8. Mostrar sala\n");
+            printf("Digite o numero da acao: ");
+            int escolha;
+            scanf("%d", &escolha);
+            while (getchar() != '\n'); 
+
+            if (escolha == 1 && sala.geradores_recursos > 0) {
+                printf("Voce extraiu recursos da sala.\n");
+                jogador.materiais++;
+                sala.geradores_recursos--;
+            } else if (escolha == 2 && sala.baus > 0) {
+                printf("Voce abriu um bau e encontrou um item!\n");
+                jogador.adicionarItem(Item("Espada", 0, 0, 0)); 
+                sala.baus--;
+            } else if (escolha == 3 && sala.monstros > 0) {
+                printf("Voce derrotou um monstro!\n");
+                sala.monstros--;
+            } else if (escolha == 4 && sala.npcs > 0) {
+                printf("Voce encontrou um NPC!\n");
+                eventoNPC(jogador);
+                sala.npcs--;
+            } else if (escolha == 5) {
+                printf("Voce entrou na porta para a proxima sala.\n");
+                system(CLEAR_COMMAND); // Limpa a tela ao entrar em uma nova sala
+                break; 
+            } else if (escolha == 6) {
+                acessarInventario(jogador);
+            } else if (escolha == 7) {
+                mostrarStatus(jogador);
+            } else if (escolha == 8) {
+                mostrarSala(sala);
+            } else {
+                printf("Acao invalida! Tente novamente.\n");
+            }
+        }
+    }
+
+    printf("Fim do jogo! Voce explorou %d salas.\n", jogador.salas_exploradas);
+    system("pause"); 
+}
+
+int main() {
+    while (true) {
+        mostrarMenuInicial();
+        int opcao;
+        scanf("%d", &opcao);
+        while (getchar() != '\n'); 
+
+        if (opcao == 1) {
+            system(CLEAR_COMMAND); // Limpa a tela
+            jogar();
+            break;
+        } else if (opcao == 2) {
+            system(CLEAR_COMMAND); // Limpa a tela
+            mostrarExplicacao();
+            printf("Pressione ENTER para voltar ao menu principal...");
+            while (getchar() != '\n');
+            system(CLEAR_COMMAND); // Limpa a tela antes de mostrar o menu novamente
+        } else {
+            printf("Opcao invalida! Tente novamente.\n");
+        }
+    }
+
+    return 0;
+}
